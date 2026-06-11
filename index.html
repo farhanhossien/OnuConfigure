@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Huawei OLT Manager</title>
+<style>
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #21262d;
+    --border: #30363d;
+    --accent: #f97316;
+    --accent2: #fb923c;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+    --blue: #3b82f6;
+    --text: #e6edf3;
+    --text2: #8b949e;
+    --font-mono: 'Courier New', monospace;
+    --font: 'Segoe UI', system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--font); min-height: 100vh; }
+
+  /* Header */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-icon { font-size: 22px; }
+  .header h1 { font-size: 18px; font-weight: 600; color: var(--text); }
+  .header span { font-size: 12px; color: var(--text2); margin-left: 4px; }
+  .conn-badge {
+    margin-left: auto;
+    padding: 4px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    background: var(--surface2);
+    color: var(--text2);
+    border: 1px solid var(--border);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .conn-badge.connected { color: var(--green); border-color: var(--green); }
+  .conn-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+
+  /* Layout */
+  .main { display: flex; height: calc(100vh - 57px); }
+  .sidebar { width: 320px; min-width: 320px; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+  /* Sections */
+  .section { border-bottom: 1px solid var(--border); padding: 16px; }
+  .section-title {
+    font-size: 11px; font-weight: 600; text-transform: uppercase;
+    letter-spacing: 0.08em; color: var(--text2); margin-bottom: 12px;
+    display: flex; align-items: center; gap: 6px;
+  }
+
+  /* Form */
+  .form-row { margin-bottom: 10px; }
+  .form-row label { display: block; font-size: 12px; color: var(--text2); margin-bottom: 4px; }
+  .form-row input {
+    width: 100%; padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--border); background: var(--surface2);
+    color: var(--text); font-size: 13px; outline: none;
+    transition: border-color 0.2s;
+  }
+  .form-row input:focus { border-color: var(--accent); }
+  .form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Buttons */
+  .btn {
+    padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 13px; font-weight: 600; transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+  .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-green { background: var(--green); color: #fff; }
+  .btn-green:hover { opacity: 0.85; }
+  .btn-red { background: var(--red); color: #fff; }
+  .btn-red:hover { opacity: 0.85; }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-full { width: 100%; justify-content: center; }
+
+  /* ONU List */
+  .onu-list { flex: 1; overflow-y: auto; padding: 12px; }
+  .onu-list::-webkit-scrollbar { width: 4px; }
+  .onu-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+  .onu-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; padding: 12px; margin-bottom: 8px; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .onu-card:hover { border-color: var(--accent); }
+  .onu-card.selected { border-color: var(--accent); background: #1a1207; }
+  .onu-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .onu-fsp { font-family: var(--font-mono); font-size: 14px; font-weight: 700; color: var(--accent); }
+  .onu-type-badge {
+    font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 4px;
+    background: #1e3a5f; color: var(--blue);
+  }
+  .onu-mac { font-family: var(--font-mono); font-size: 12px; color: var(--text2); }
+  .onu-vlan { font-size: 11px; color: var(--text2); margin-top: 4px; }
+  .onu-vlan strong { color: var(--yellow); }
+
+  /* Right panel */
+  .panel-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+  .panel-header h2 { font-size: 15px; font-weight: 600; }
+  .panel-body { flex: 1; overflow-y: auto; padding: 20px; }
+
+  /* Config form */
+  .config-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .config-field { }
+  .config-field label { font-size: 12px; color: var(--text2); margin-bottom: 4px; display: block; }
+  .config-value {
+    padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 6px; font-family: var(--font-mono); font-size: 13px; color: var(--text);
+  }
+  .config-value.editable {
+    outline: none; cursor: text;
+  }
+  .config-value.editable:focus { border-color: var(--accent); }
+
+  /* Terminal log */
+  .terminal {
+    background: #0a0e14; border: 1px solid var(--border); border-radius: 8px;
+    padding: 14px; font-family: var(--font-mono); font-size: 12px;
+    line-height: 1.7; max-height: 300px; overflow-y: auto; margin-top: 16px;
+  }
+  .terminal::-webkit-scrollbar { width: 4px; }
+  .terminal::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  .log-line { display: flex; gap: 8px; }
+  .log-cmd { color: var(--accent); }
+  .log-ok { color: var(--green); }
+  .log-err { color: var(--red); }
+  .log-info { color: var(--text2); }
+  .log-ts { color: #4b5563; min-width: 60px; }
+
+  /* Status area */
+  .status-bar {
+    padding: 8px 20px; background: var(--surface); border-top: 1px solid var(--border);
+    font-size: 12px; color: var(--text2); display: flex; align-items: center; gap: 8px;
+  }
+  .status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--text2); }
+  .status-dot.ok { background: var(--green); }
+  .status-dot.err { background: var(--red); }
+  .status-dot.loading { background: var(--yellow); animation: pulse 0.8s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 40px 20px; color: var(--text2); }
+  .empty-icon { font-size: 36px; margin-bottom: 10px; opacity: 0.4; }
+  .empty p { font-size: 13px; line-height: 1.6; }
+
+  /* Alert */
+  .alert {
+    padding: 10px 14px; border-radius: 6px; font-size: 13px; margin-bottom: 12px;
+    display: flex; align-items: flex-start; gap: 8px;
+  }
+  .alert-success { background: #052e16; border: 1px solid #166534; color: var(--green); }
+  .alert-error { background: #450a0a; border: 1px solid #7f1d1d; color: var(--red); }
+  .alert-info { background: #0c1a2e; border: 1px solid #1e3a5f; color: #60a5fa; }
+
+  /* Loader spinner */
+  .spinner {
+    width: 16px; height: 16px; border: 2px solid var(--border);
+    border-top-color: var(--accent); border-radius: 50%;
+    animation: spin 0.7s linear infinite; display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .divider { height: 1px; background: var(--border); margin: 14px 0; }
+
+  .ont-id-input {
+    width: 100%; padding: 7px 10px; border-radius: 6px;
+    border: 1px solid var(--accent); background: var(--surface2);
+    color: var(--accent); font-size: 14px; font-weight: 700;
+    font-family: var(--font-mono); outline: none; text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span class="header-icon">🔧</span>
+  <h1>Huawei OLT Manager <span>EPON Auto-Configure</span></h1>
+  <div class="conn-badge" id="connBadge">
+    <span class="dot"></span> Disconnected
+  </div>
+</div>
+
+<div class="main">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Login Form -->
+    <div class="section" id="loginSection">
+      <div class="section-title">⚡ OLT Connection</div>
+      <div class="form-2col">
+        <div class="form-row">
+          <label>Host / IP</label>
+          <input id="fHost" type="text" placeholder="172.32.3.1" value="">
+        </div>
+        <div class="form-row">
+          <label>Port (Telnet)</label>
+          <input id="fPort" type="number" value="23">
+        </div>
+      </div>
+      <div class="form-row">
+        <label>Username</label>
+        <input id="fUser" type="text" placeholder="admin">
+      </div>
+      <div class="form-row">
+        <label>Password</label>
+        <input id="fPass" type="password" placeholder="••••••••">
+      </div>
+      <button class="btn btn-primary btn-full" id="btnConnect" onclick="connectOLT()">
+        🔌 Connect to OLT
+      </button>
+      <button class="btn btn-red btn-full" id="btnDisconnect" onclick="disconnectOLT()" style="display:none;margin-top:6px;">
+        ✕ Disconnect
+      </button>
+    </div>
+
+    <!-- ONU Scan -->
+    <div class="section">
+      <div class="section-title">📡 Auto Find ONU</div>
+      <button class="btn btn-secondary btn-full" id="btnScan" onclick="scanONU()" disabled>
+        🔍 Scan Unconfigured ONU
+      </button>
+      <div id="scanCount" style="text-align:center;font-size:12px;color:var(--text2);margin-top:8px;"></div>
+    </div>
+
+    <!-- ONU List -->
+    <div class="onu-list" id="onuList">
+      <div class="empty">
+        <div class="empty-icon">📡</div>
+        <p>Connect to OLT and<br>scan for unconfigured ONUs</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Panel -->
+  <div class="content">
+    <div class="panel-header">
+      <span style="font-size:18px">⚙️</span>
+      <h2>ONU Configuration</h2>
+      <div style="margin-left:auto;font-size:12px;color:var(--text2)" id="panelSubtitle">Select an ONU from the list</div>
+    </div>
+    <div class="panel-body" id="panelBody">
+      <div class="empty" style="margin-top:60px">
+        <div class="empty-icon">👈</div>
+        <p>Scan for ONUs and click on one<br>to configure it automatically</p>
+      </div>
+    </div>
+    <div class="status-bar">
+      <div class="status-dot" id="statusDot"></div>
+      <span id="statusText">Ready</span>
+    </div>
+  </div>
+</div>
+
+<script>
+let sessionId = null;
+let selectedONU = null;
+
+function setStatus(msg, type='info') {
+  document.getElementById('statusText').textContent = msg;
+  const d = document.getElementById('statusDot');
+  d.className = 'status-dot ' + (type === 'ok' ? 'ok' : type === 'err' ? 'err' : type === 'loading' ? 'loading' : '');
+}
+
+function ts() {
+  return new Date().toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+
+function addLog(terminal, type, text) {
+  const div = document.createElement('div');
+  div.className = 'log-line';
+  div.innerHTML = `<span class="log-ts">[${ts()}]</span><span class="log-${type}">${escHtml(text)}</span>`;
+  terminal.appendChild(div);
+  terminal.scrollTop = terminal.scrollHeight;
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+async function connectOLT() {
+  const host = document.getElementById('fHost').value.trim();
+  const port = document.getElementById('fPort').value;
+  const username = document.getElementById('fUser').value.trim();
+  const password = document.getElementById('fPass').value;
+
+  if (!host || !username) { alert('Host এবং Username দিন'); return; }
+
+  setStatus('Connecting to OLT...', 'loading');
+  document.getElementById('btnConnect').disabled = true;
+
+  try {
+    const r = await fetch('/api/connect', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({host, port, username, password})
+    });
+    const data = await r.json();
+    if (data.success) {
+      sessionId = data.session_id;
+      setStatus(`Connected to ${host}`, 'ok');
+      document.getElementById('connBadge').innerHTML = '<span class="dot"></span> Connected: ' + host;
+      document.getElementById('connBadge').className = 'conn-badge connected';
+      document.getElementById('btnConnect').style.display = 'none';
+      document.getElementById('btnDisconnect').style.display = 'block';
+      document.getElementById('btnScan').disabled = false;
+    } else {
+      setStatus('Connection failed: ' + data.error, 'err');
+      document.getElementById('btnConnect').disabled = false;
+    }
+  } catch(e) {
+    setStatus('Error: ' + e.message, 'err');
+    document.getElementById('btnConnect').disabled = false;
+  }
+}
+
+async function disconnectOLT() {
+  if (!sessionId) return;
+  await fetch('/api/disconnect', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: sessionId})
+  });
+  sessionId = null;
+  setStatus('Disconnected', 'err');
+  document.getElementById('connBadge').innerHTML = '<span class="dot"></span> Disconnected';
+  document.getElementById('connBadge').className = 'conn-badge';
+  document.getElementById('btnConnect').style.display = 'block';
+  document.getElementById('btnConnect').disabled = false;
+  document.getElementById('btnDisconnect').style.display = 'none';
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('onuList').innerHTML = '<div class="empty"><div class="empty-icon">📡</div><p>Connect to OLT and<br>scan for unconfigured ONUs</p></div>';
+  document.getElementById('scanCount').textContent = '';
+  document.getElementById('panelBody').innerHTML = '<div class="empty" style="margin-top:60px"><div class="empty-icon">👈</div><p>Scan for ONUs and click on one<br>to configure it automatically</p></div>';
+}
+
+async function scanONU() {
+  if (!sessionId) return;
+  setStatus('Scanning for unconfigured ONUs...', 'loading');
+  document.getElementById('btnScan').disabled = true;
+  document.getElementById('btnScan').innerHTML = '<span class="spinner"></span> Scanning...';
+  document.getElementById('onuList').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>Running autofind command...<br>Please wait</p></div>';
+
+  try {
+    const r = await fetch('/api/autofind', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({session_id: sessionId})
+    });
+    const data = await r.json();
+    document.getElementById('btnScan').disabled = false;
+    document.getElementById('btnScan').innerHTML = '🔍 Scan Unconfigured ONU';
+
+    if (data.success) {
+      renderONUList(data.onus);
+      const cnt = data.onus.length;
+      document.getElementById('scanCount').textContent = cnt === 0 ? 'No unconfigured ONU found' : `${cnt} ONU found`;
+      setStatus(`Scan complete — ${cnt} unconfigured ONU found`, cnt > 0 ? 'ok' : 'info');
+      window._lastRaw = data.raw || '';
+      if (cnt === 0) {
+        const rawEscaped = (data.raw || '(empty)').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        document.getElementById('panelBody').innerHTML =
+          '<div style="padding:16px">' +
+          '<div class="alert alert-info" style="margin-bottom:12px">Parser returned 0 results. Raw OLT output below:</div>' +
+          '<button class="btn btn-secondary" style="margin-bottom:10px" onclick="navigator.clipboard.writeText(window._lastRaw).then(()=>alert(\'Copied!\'))">📋 Copy Raw Output</button>' +
+          '<div class="terminal" style="max-height:450px;white-space:pre-wrap;word-break:break-all">' + rawEscaped + '</div>' +
+          '</div>';
+      }
+    } else {
+      setStatus('Scan failed: ' + data.error, 'err');
+    }
+  } catch(e) {
+    setStatus('Error: ' + e.message, 'err');
+    document.getElementById('btnScan').disabled = false;
+    document.getElementById('btnScan').innerHTML = '🔍 Scan Unconfigured ONU';
+  }
+}
+
+function renderONUList(onus) {
+  const list = document.getElementById('onuList');
+  if (!onus.length) {
+    list.innerHTML = '<div class="empty"><div class="empty-icon">✅</div><p>No unconfigured ONU found.<br>All ONUs are already configured!</p></div>';
+    return;
+  }
+  list.innerHTML = onus.map((onu, i) => `
+    <div class="onu-card" id="onuCard${i}" onclick="selectONU(${i})">
+      <div class="onu-card-header">
+        <span class="onu-fsp">📍 ${onu.fsp}</span>
+        <span class="onu-type-badge">${onu.type}</span>
+      </div>
+      <div class="onu-mac">🔑 ${onu.identifier}</div>
+      <div class="onu-vlan">Service VLAN: <strong>${onu.service_vlan}</strong> &nbsp;|&nbsp; PON: ${onu.pon}</div>
+    </div>
+  `).join('');
+  window._onuData = onus;
+}
+
+async function selectONU(idx) {
+  // Highlight card
+  document.querySelectorAll('.onu-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('onuCard' + idx).classList.add('selected');
+
+  const onu = window._onuData[idx];
+  selectedONU = onu;
+
+  document.getElementById('panelSubtitle').textContent = `Frame: ${onu.frame}  Slot: ${onu.slot}  PON: ${onu.pon}`;
+  document.getElementById('panelBody').innerHTML = '<div class="empty"><div class="empty-icon">⏳</div><p>Checking current configuration...</p></div>';
+  setStatus('Checking used ONT IDs on this interface...', 'loading');
+
+  // Get free ONT ID
+  const r = await fetch('/api/get_current_config', {
+    method: 'POST', headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({session_id: sessionId, frame: onu.frame, slot: onu.slot, pon: onu.pon})
+  });
+  const cfg = await r.json();
+
+  if (!cfg.success) {
+    setStatus('Failed to read config: ' + cfg.error, 'err');
+    return;
+  }
+
+  setStatus(`Free ONT ID: ${cfg.free_id} — Ready to configure`, 'ok');
+  renderConfigPanel(onu, cfg.free_id, cfg.used_ids);
+}
+
+function renderConfigPanel(onu, freeId, usedIds) {
+  const html = `
+    <div id="alertArea"></div>
+    <div style="margin-bottom:16px">
+      <div style="font-size:13px;color:var(--text2);margin-bottom:10px">
+        Used ONT IDs on <strong style="color:var(--text)">${onu.fsp}</strong>: 
+        <span style="font-family:var(--font-mono);color:var(--yellow)">${usedIds.length ? usedIds.join(', ') : 'none'}</span>
+      </div>
+    </div>
+
+    <div class="config-grid">
+      <div class="config-field">
+        <label>Frame / Slot / PON</label>
+        <div class="config-value">${onu.frame} / ${onu.slot} / ${onu.pon}</div>
+      </div>
+      <div class="config-field">
+        <label>Type</label>
+        <div class="config-value">${onu.type}</div>
+      </div>
+      <div class="config-field">
+        <label>MAC Address</label>
+        <div class="config-value">${onu.identifier}</div>
+      </div>
+      <div class="config-field">
+        <label>Service VLAN</label>
+        <div class="config-value"><span style="color:var(--yellow)">${onu.service_vlan}</span></div>
+      </div>
+      <div class="config-field">
+        <label>Line Profile ID</label>
+        <div class="config-value">20</div>
+      </div>
+      <div class="config-field">
+        <label>Service Profile ID</label>
+        <div class="config-value">20</div>
+      </div>
+      <div class="config-field">
+        <label>User VLAN</label>
+        <div class="config-value">100</div>
+      </div>
+      <div class="config-field">
+        <label>ONT ID (Free) ✏️</label>
+        <input class="ont-id-input" type="number" id="ontIdInput" value="${freeId}" min="0" max="63">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div style="background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;margin-bottom:16px;">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Commands that will run:</div>
+      <div id="cmdPreview" style="font-family:var(--font-mono);font-size:12px;line-height:2;color:var(--text2)"></div>
+    </div>
+
+    <button class="btn btn-green btn-full" id="btnConfigure" onclick="configureONU()" style="margin-bottom:8px;">
+      ⚡ Configure This ONU
+    </button>
+
+    <div id="configLog"></div>
+  `;
+  document.getElementById('panelBody').innerHTML = html;
+  document.getElementById('ontIdInput').addEventListener('input', updateCmdPreview);
+  updateCmdPreview();
+}
+
+function updateCmdPreview() {
+  const onu = selectedONU;
+  if (!onu) return;
+  const ontId = document.getElementById('ontIdInput').value;
+  const svcVlan = onu.service_vlan;
+  const cmds = [
+    `<span style="color:var(--accent)">config</span>`,
+    `<span style="color:var(--accent)">board confirm ${onu.frame}/${onu.slot}</span>`,
+    `<span style="color:var(--accent)">interface epon ${onu.frame}/${onu.slot}</span>`,
+    `<span style="color:var(--green)">ont add ${onu.pon} <strong>${ontId}</strong> mac-auth ${onu.identifier} oam ont-lineprofile-id 20 ont-srvprofile-id 20</span>`,
+    `<span style="color:var(--green)">ont port native-vlan ${onu.pon} <strong>${ontId}</strong> eth 1 vlan 100</span>`,
+    `<span style="color:var(--accent)">quit</span>`,
+    `<span style="color:var(--blue)">service-port vlan ${svcVlan} epon ${onu.frame}/${onu.slot}/${onu.pon} ont <strong>${ontId}</strong> multi-service user-vlan 100 tag-transform translate</span>`,
+  ];
+  document.getElementById('cmdPreview').innerHTML = cmds.map(c => `<div>➜ ${c}</div>`).join('');
+}
+
+async function configureONU() {
+  const onu = selectedONU;
+  if (!onu) return;
+  const ontId = parseInt(document.getElementById('ontIdInput').value);
+  if (isNaN(ontId) || ontId < 0 || ontId > 63) { alert('ONT ID must be 0–63'); return; }
+
+  // Confirm
+  if (!confirm(`ONU configure করবেন?\n\nFSP: ${onu.fsp}\nMAC: ${onu.identifier}\nONT ID: ${ontId}\nService VLAN: ${onu.service_vlan}`)) return;
+
+  document.getElementById('btnConfigure').disabled = true;
+  document.getElementById('btnConfigure').innerHTML = '<span class="spinner"></span> Configuring...';
+  setStatus('Configuring ONU...', 'loading');
+
+  const logDiv = document.getElementById('configLog');
+  logDiv.innerHTML = '<div class="terminal" id="configTerminal"></div>';
+  const term = document.getElementById('configTerminal');
+  addLog(term, 'info', `Starting configuration for ${onu.fsp} ONT-ID:${ontId}`);
+
+  try {
+    const r = await fetch('/api/configure_onu', {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        session_id: sessionId,
+        frame: onu.frame, slot: onu.slot, pon: onu.pon,
+        ont_id: ontId, mac: onu.identifier
+      })
+    });
+    const data = await r.json();
+
+    if (data.steps) {
+      data.steps.forEach(s => {
+        addLog(term, 'cmd', '➜ ' + s.cmd);
+        if (s.output && s.output.trim()) {
+          s.output.trim().split('\n').slice(0,3).forEach(line => {
+            if (line.trim()) addLog(term, 'info', '  ' + line.trim());
+          });
+        }
+      });
+    }
+
+    const alertDiv = document.getElementById('alertArea');
+    if (data.success) {
+      alertDiv.innerHTML = `<div class="alert alert-success">✅ ${data.message}</div>`;
+      addLog(term, 'ok', '✓ Configuration successful!');
+      setStatus('ONU configured successfully!', 'ok');
+      // Update card
+      document.querySelectorAll('.onu-card.selected').forEach(c => {
+        c.style.opacity = '0.5';
+        c.style.pointerEvents = 'none';
+        c.querySelector('.onu-fsp').textContent += ' ✓';
+      });
+    } else {
+      alertDiv.innerHTML = `<div class="alert alert-error">❌ ${data.error}</div>`;
+      addLog(term, 'err', '✗ Error: ' + data.error);
+      setStatus('Configuration failed', 'err');
+    }
+  } catch(e) {
+    setStatus('Error: ' + e.message, 'err');
+    addLog(term, 'err', '✗ ' + e.message);
+  }
+
+  document.getElementById('btnConfigure').disabled = false;
+  document.getElementById('btnConfigure').innerHTML = '⚡ Configure This ONU';
+}
+</script>
+</body>
+</html>
